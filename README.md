@@ -1,1 +1,1 @@
-# centrify-thycotic-vaultsync
+# Centrify-Thycotic "Vault Sync" tools
