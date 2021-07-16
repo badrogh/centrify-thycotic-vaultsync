@@ -104,7 +104,7 @@ if (@(Get-Module | Where-Object {$_.Name -eq $ModuleName}).count -eq 0) {
 	Write-Log 0 ("Loading {0} module..." -f $ModuleName)
 	Import-Module $ModuleName
 	if (@(Get-Module | Where-Object {$_.Name -eq $ModuleName}).count -ne 0) {
-		Write-Log 3 ("{0} module loaded" -f $ModuleName)
+		Write-Log 0 ("{0} module loaded" -f $ModuleName)
 	}
 	else {
 		Write-Log 1 ("Unable to load {0} module" -f $ModuleName)
@@ -122,11 +122,11 @@ if ($PlatformConnection -eq [void]$null) {
         Write-Log 1 ("Unable to establish connection to Centrify tenant '{0}'" -f $Url)
     }
     else {
-        Write-Log 3 ("Connection to Centrify tenant '{0}'" -f $Url)
+        Write-Log 0 ("Connection to Centrify tenant '{0}'" -f $Url)
     }
 }
 else {
-    Write-Log 3 ("Connected to Centrify tenant '{0}'" -f $PlatformConnection.PodFqdn)
+    Write-Log 0 ("Connected to Centrify tenant '{0}'" -f $PlatformConnection.PodFqdn)
 }
 
 # Evaluate target type to perform action against
