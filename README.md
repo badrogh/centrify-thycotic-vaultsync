@@ -27,3 +27,4 @@ Configuration at Secret Server:
 - Add Logging capability to scripts (write events into Log file with preset Log level)
 - Script cannot support renaming of secrets or systems, must implement UUID/SecretID storage on one side or the other to allow unique mapping)
 - May need to implement missing Cmdlets in Centrify SDK: New-VaultDomain, New-VaultDatabase, New-VaultCloudProvider, Get-VaultCloudProvider, Set-VaultCloudProvider
+- Centrify Service User for Secret Server should be granted Global permissions on Accounts and System to guarantee rights to manage accounts. Permissions would also need to be granted for ALL databases and domains if planned to be used this way (no Global permissions available for those)

@@ -23,6 +23,12 @@ Specifies the Centrify Platform API Scope to use for OAuth.
 .PARAMETER APISecret
 Specifies the Centrify Platform API Secret to use for OAuth (Base64 Secret for OAUth Confidential Client authentication).
 
+.PARAMETER LogFile
+Specifies the literal Path to Log file for this script.
+
+.PARAMETER LogLevel
+Specifies the Log level for this script: 0 - Debug, 1 - Error, 2 - Warning, 3 - Info (default).
+
 .PARAMETER Action
 Specifies the Action to perform on the Centrify Platform resource. It can be create|update|delete".
 
@@ -47,24 +53,30 @@ Specifies the system resource Computer Class when Action is to create a new syst
 ###     PARAMETERS     ###
 ##########################
 
-$Url = "aasgaard.my.centrify-dev.net"
-$APIClient = "secretserver"
-$APIScope = "sync"
-$APISecret = "c3ZjX3NlY3JldHNlcnZlckBhYXNnYWFyZC5kZXY6Q2VudHIxZnk="
+# Centrify Tenant URL and OAuth settings
+[string]$Url = "aasgaard.my.centrify-dev.net"
+[string]$APIClient = "secretserver"
+[string]$APIScope = "sync"
+[string]$APISecret = "c3ZjX3NlY3JldHNlcnZlckBhYXNnYWFyZC5kZXY6Q2VudHIxZnk="
 
-$Action = $Args[0]
-$ResourceType = $Args[1]
-$ResourceName = $Args[2]
-$AccountName = $Args[3]
-$Password = $Args[4]
-$ComputerClass = $Args[5]
+# Log file and level
+[string]$LogFile = "C:\Users\fabrice\Documents\GitHub\centrify-thycotic-vaultsync\centrify_vaultsync.log"
+[int32]$LogLevel = 3
+
+# Script arguments
+[string]$Action = $Args[0]
+[string]$ResourceType = $Args[1]
+[string]$ResourceName = $Args[2]
+[string]$AccountName = $Args[3]
+[string]$Password = $Args[4]
+[string]$ComputerClass = $Args[5]
 
 ##########################################
 ###     CENTRIFY POWERSHELL MODULE     ###
 ##########################################
 
 # Add PowerShell Module to session if not already loaded
-[System.String]$ModuleName = "Centrify.Platform.PowerShell"
+[string]$ModuleName = "Centrify.Platform.PowerShell"
 # Load PowerShell Module if not already loaded
 if (@(Get-Module | Where-Object {$_.Name -eq $ModuleName}).count -eq 0) {
 	Write-Verbose ("Loading {0} module..." -f $ModuleName)
@@ -78,14 +90,35 @@ if (@(Get-Module | Where-Object {$_.Name -eq $ModuleName}).count -eq 0) {
 }
 
 ##########################
+###    LOG FACILITY    ###
+##########################
+function Write-Log([int32]$Level, [string]$Message)
+{
+    # Evaluate Log Level based on global configuration
+    if ($Level -ge $LogLevel)
+    {
+        # Format message
+        [string]$Timestamp = Get-Date -Format "yyyy-MM-ddThh:mm:sszzz"
+        [string]$MessageLevel = switch ($Level)
+        {
+            "0" { return "DEBUG" }
+            "1" { return "ERROR" }
+            "2" { return "WARN" }
+            "3" { return "INFO" }
+        }
+        # Write Log
+        Out-File -FilePath $LogFile -Append -NoClobber ("{0}|{1}|{2}" -f $Timestamp, $MessageLevel, $Message)
+    }
+}
+##########################
 ###     MAIN LOGIC     ###
 ##########################
 
-if ($PlatformConnection -eq [Void]$Null) {
+if ($PlatformConnection -eq [void]$null) {
     # Connect to Centrify Platform
     Connect-CentrifyPlatform -Url $Url -Client $APIClient -Scope $APIScope -Secret $APISecret
-    if ($PlatformConnection -eq [Void]$Null) {
-        Throw ("ERROR: Unable to establish connection to Centrify tenant using URL {0}." -f $Url)
+    if ($PlatformConnection -eq [void]$null) {
+        Write-Log(1, ("Unable to establish connection to Centrify tenant using URL {0}." -f $Url))
     }
 }
 
@@ -94,7 +127,7 @@ switch -Exact ($ResourceType) {
     "server" {
         # Validate Server exists
         $VaultedServer = Get-VaultSystem -Name $ResourceName
-        if ($VaultedServer -eq [Void]$Null) {
+        if ($VaultedServer -eq [void]$null) {
             # Evaluate Action to perform
             if ($Action -eq "create") {
                 # Create Server in Centrify Vault
@@ -102,12 +135,12 @@ switch -Exact ($ResourceType) {
             }
             else {
                 # Server must exists for Update and Delete actions
-                Throw ("ERROR: Target Server '{0}' cannot be found." -f $ResourceName)
+                Write-Log(1, ("Target Server '{0}' cannot be found." -f $ResourceName))
             }
         }
         # Validate Account exists
         $VaultedAccount = Get-VaultAccount -VaultSystem $VaultedServer -User $AccountName
-        if ($VaultedAccount -eq [Void]$Null) {
+        if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
             if ($Action -eq "create") {
                 # Create Account in Centrify Vault
@@ -115,7 +148,7 @@ switch -Exact ($ResourceType) {
             }
             else {
                 # Account must exists for Update and Delete actions
-                Throw ("ERROR: Target Account '{0}' cannot be found in Server '{1}'." -f $AccountName, $ResourceName)
+                Write-Log(1, ("Target Account '{0}' cannot be found in Server '{1}'." -f $AccountName, $ResourceName))
             }
         }
     }
@@ -123,13 +156,13 @@ switch -Exact ($ResourceType) {
     "domain" {
         # Validate Domain exists
         $VaultedDomain = Get-VaultDomain -Name $ResourceName
-        if ($VaultedDomain -eq [Void]$Null) {
+        if ($VaultedDomain -eq [void]$null) {
             # Domain must exists for Create, Update and Delete actions
-            Throw ("ERROR: Target Domain '{0}' cannot be found." -f $ResourceName)
+            Write-Log(1, ("Target Domain '{0}' cannot be found." -f $ResourceName))
         }
         # Validate Account exists
         $VaultedAccount = Get-VaultAccount -VaultDomain $VaultedDomain -User $AccountName
-        if ($VaultedAccount -eq [Void]$Null) {
+        if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
             if ($Action -eq "create") {
                 # Create Account in Centrify Vault
@@ -137,7 +170,7 @@ switch -Exact ($ResourceType) {
             }
             else {
                 # Account must exists for Update and Delete actions
-                Throw ("ERROR: Target Account '{0}' cannot be found in Domain '{1}'." -f $AccountName, $ResourceName)
+                Write-Log(1, ("Target Account '{0}' cannot be found in Domain '{1}'." -f $AccountName, $ResourceName))
             }
         }
     }
@@ -145,13 +178,13 @@ switch -Exact ($ResourceType) {
     "database" {
         # Validate Database exists
         $VaultedDatabase = Get-VaultDatabase -Name $ResourceName
-        if ($VaultedDatabase -eq [Void]$Null) {
+        if ($VaultedDatabase -eq [void]$null) {
             # Database must exists for Create, Update and Delete actions
-            Throw ("ERROR: Target Database '{0}' cannot be found." -f $ResourceName)
+            Write-Log(1, ("Target Database '{0}' cannot be found." -f $ResourceName))
         }
         # Validate Account exists
         $VaultedAccount = Get-VaultAccount -VaultDatabase $VaultedDatabase -User $AccountName
-        if ($VaultedAccount -eq [Void]$Null) {
+        if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
             if ($Action -eq "create") {
                 # Create Account in Centrify Vault
@@ -159,7 +192,7 @@ switch -Exact ($ResourceType) {
             }
             else {
                 # Account must exists for Update and Delete actions
-                Throw ("ERROR: Target Account '{0}' cannot be found in Database '{1}'." -f $AccountName, $ResourceName)
+                Write-Log(1, ("Target Account '{0}' cannot be found in Database '{1}'." -f $AccountName, $ResourceName))
             }
         }
     }
@@ -168,18 +201,18 @@ switch -Exact ($ResourceType) {
     "cloud provider" {
         # Validate CloudProvider exists
         $VaultedCloudProvider = Get-VaultCloudProvider -Name $ResourceName
-        if ($VaultedCloudProvider -eq [Void]$Null) {
-            Throw ("ERROR: Target Cloud Provider '{0}' cannot be found." -f $ResourceName)
+        if ($VaultedCloudProvider -eq [void]$null) {
+            Write-Log(1, ("Target Cloud Provider '{0}' cannot be found." -f $ResourceName))
         }
         # Validate Account exists
         $VaultedAccount = Get-VaultAccount -VaultCloudProvider $VaultedCloudProvider -Name $AccountName
-        if ($VaultedAccount -eq [Void]$Null) {
-            Throw ("ERROR: Target Account '{0}' cannot be found in Cloud Provider '{1}'." -f $AccountName, $ResourceName)
+        if ($VaultedAccount -eq [void]$null) {
+            Write-Log(1, ("Target Account '{0}' cannot be found in Cloud Provider '{1}'." -f $AccountName, $ResourceName))
         }
     } #>
     
     default {
-        Throw ("ERROR: Target Type '{0}' is not supported." -f $ResourceType)
+        Write-Log(1, ("Target Type '{0}' is not supported." -f $ResourceType))
     }
 }
 
@@ -195,6 +228,6 @@ elseif ($Action -eq "delete") {
 else {
     # Throw error for any action other than create
     if ($Action -ne "create") {
-        Throw ("ERROR: Action '{0}' is not supported." -f $Action)
+        Write-Log(1, ("Action '{0}' is not supported." -f $Action))
     }
 }
