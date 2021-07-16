@@ -89,7 +89,7 @@ function Write-Log([int32]$Level, [string]$Message)
             "3" { [string]$MessageLevel = "INFO" }
         }
         # Write Log
-        ("{0}|{1}|{2}" -f $Timestamp, $MessageLevel, $Message) | Out-File -FilePath $LogFile -Append -NoClobber -Force 
+        ("{0}|{1}|{2}" -f $Timestamp, $MessageLevel, $Message) | Out-File -FilePath $LogFile -Append -NoClobber -Force
     }
 }
 
@@ -108,6 +108,7 @@ if (@(Get-Module | Where-Object {$_.Name -eq $ModuleName}).count -eq 0) {
 	}
 	else {
 		Write-Log 1 ("Unable to load {0} module" -f $ModuleName)
+        exit 1
 	}
 }
 
@@ -120,6 +121,7 @@ if ($PlatformConnection -eq [void]$null) {
     Connect-CentrifyPlatform -Url $Url -Client $APIClient -Scope $APIScope -Secret $APISecret
     if ($PlatformConnection -eq [void]$null) {
         Write-Log 1 ("Unable to establish connection to Centrify tenant '{0}'" -f $Url)
+        exit 1
     }
     else {
         Write-Log 0 ("Connection to Centrify tenant '{0}'" -f $Url)
@@ -145,6 +147,7 @@ switch -Exact ($ResourceType) {
             else {
                 # Server must exists for Update and Delete actions
                 Write-Log 1 ("Target Server '{0}' cannot be found" -f $ResourceName)
+                exit 1
             }
         }
         # Validate Account exists
@@ -160,6 +163,7 @@ switch -Exact ($ResourceType) {
             else {
                 # Account must exists for Update and Delete actions
                 Write-Log 1 ("Target Account '{0}' cannot be found in Server '{1}'" -f $AccountName, $ResourceName)
+                exit 1
             }
         }
     }
@@ -170,6 +174,7 @@ switch -Exact ($ResourceType) {
         if ($VaultedDomain -eq [void]$null) {
             # Domain must exists for Create, Update and Delete actions
             Write-Log 1 ("Target Domain '{0}' cannot be found" -f $ResourceName)
+            exit 1
         }
         # Validate Account exists
         $VaultedAccount = Get-VaultAccount -VaultDomain $VaultedDomain -User $AccountName
@@ -194,6 +199,7 @@ switch -Exact ($ResourceType) {
         if ($VaultedDatabase -eq [void]$null) {
             # Database must exists for Create, Update and Delete actions
             Write-Log 1 ("Target Database '{0}' cannot be found" -f $ResourceName)
+            exit 1
         }
         # Validate Account exists
         $VaultedAccount = Get-VaultAccount -VaultDatabase $VaultedDatabase -User $AccountName
@@ -208,6 +214,7 @@ switch -Exact ($ResourceType) {
             else {
                 # Account must exists for Update and Delete actions
                 Write-Log 1 ("Target Account '{0}' cannot be found in Database '{1}'" -f $AccountName, $ResourceName)
+                exit 1
             }
         }
     }
@@ -228,6 +235,7 @@ switch -Exact ($ResourceType) {
     
     default {
         Write-Log 1 ("Target Type '{0}' is not supported" -f $ResourceType)
+        exit 1
     }
 }
 
@@ -246,5 +254,6 @@ else {
     # Throw error for any action other than create
     if ($Action -ne "create") {
         Write-Log 1 ("Action '{0}' is not supported" -f $Action)
+        exit 1
     }
 }
