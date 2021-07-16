@@ -61,7 +61,7 @@ Specifies the system resource Computer Class when Action is to create a new syst
 
 # Log file and level
 [string]$LogFile = "C:\Users\fabrice\Documents\GitHub\centrify-thycotic-vaultsync\centrify_vaultsync.log"
-[int32]$LogLevel = 3
+[int32]$LogLevel = 0
 
 # Script arguments
 [string]$Action = $Args[0]
@@ -70,24 +70,6 @@ Specifies the system resource Computer Class when Action is to create a new syst
 [string]$AccountName = $Args[3]
 [string]$Password = $Args[4]
 [string]$ComputerClass = $Args[5]
-
-##########################################
-###     CENTRIFY POWERSHELL MODULE     ###
-##########################################
-
-# Add PowerShell Module to session if not already loaded
-[string]$ModuleName = "Centrify.Platform.PowerShell"
-# Load PowerShell Module if not already loaded
-if (@(Get-Module | Where-Object {$_.Name -eq $ModuleName}).count -eq 0) {
-	Write-Verbose ("Loading {0} module..." -f $ModuleName)
-	Import-Module $ModuleName
-	if (@(Get-Module | Where-Object {$_.Name -eq $ModuleName}).count -ne 0) {
-		Write-Verbose ("{0} module loaded." -f $ModuleName)
-	}
-	else {
-		Throw ("ERROR: Unable to load {0} module." -f $ModuleName)
-	}
-}
 
 ##########################
 ###    LOG FACILITY    ###
@@ -99,17 +81,36 @@ function Write-Log([int32]$Level, [string]$Message)
     {
         # Format message
         [string]$Timestamp = Get-Date -Format "yyyy-MM-ddThh:mm:sszzz"
-        [string]$MessageLevel = switch ($Level)
+        switch ($Level)
         {
-            "0" { return "DEBUG" }
-            "1" { return "ERROR" }
-            "2" { return "WARN" }
-            "3" { return "INFO" }
+            "0" { [string]$MessageLevel = "DEBUG" }
+            "1" { [string]$MessageLevel = "ERROR" }
+            "2" { [string]$MessageLevel = "WARN" }
+            "3" { [string]$MessageLevel = "INFO" }
         }
         # Write Log
-        Out-File -FilePath $LogFile -Append -NoClobber ("{0}|{1}|{2}" -f $Timestamp, $MessageLevel, $Message)
+        ("{0}|{1}|{2}" -f $Timestamp, $MessageLevel, $Message) | Out-File -FilePath $LogFile -Append -NoClobber -Force 
     }
 }
+
+##########################################
+###     CENTRIFY POWERSHELL MODULE     ###
+##########################################
+
+# Add PowerShell Module to session if not already loaded
+[string]$ModuleName = "Centrify.Platform.PowerShell"
+# Load PowerShell Module if not already loaded
+if (@(Get-Module | Where-Object {$_.Name -eq $ModuleName}).count -eq 0) {
+	Write-Log 0 ("Loading {0} module..." -f $ModuleName)
+	Import-Module $ModuleName
+	if (@(Get-Module | Where-Object {$_.Name -eq $ModuleName}).count -ne 0) {
+		Write-Log 3 ("{0} module loaded" -f $ModuleName)
+	}
+	else {
+		Write-Log 1 ("Unable to load {0} module" -f $ModuleName)
+	}
+}
+
 ##########################
 ###     MAIN LOGIC     ###
 ##########################
@@ -118,8 +119,14 @@ if ($PlatformConnection -eq [void]$null) {
     # Connect to Centrify Platform
     Connect-CentrifyPlatform -Url $Url -Client $APIClient -Scope $APIScope -Secret $APISecret
     if ($PlatformConnection -eq [void]$null) {
-        Write-Log(1, ("Unable to establish connection to Centrify tenant using URL {0}." -f $Url))
+        Write-Log 1 ("Unable to establish connection to Centrify tenant '{0}'" -f $Url)
     }
+    else {
+        Write-Log 3 ("Connection to Centrify tenant '{0}'" -f $Url)
+    }
+}
+else {
+    Write-Log 3 ("Connected to Centrify tenant '{0}'" -f $PlatformConnection.PodFqdn)
 }
 
 # Evaluate target type to perform action against
@@ -130,12 +137,14 @@ switch -Exact ($ResourceType) {
         if ($VaultedServer -eq [void]$null) {
             # Evaluate Action to perform
             if ($Action -eq "create") {
+                Write-Log 2 ("Target Server '{0}' cannot be found" -f $ResourceName)
                 # Create Server in Centrify Vault
                 $VaultedServer = New-VaultSystem -Name $ResourceName -Fqdn $ResourceName -ComputerClass $ComputerClass
+                Write-Log 3 ("Target Server '{0}' with computer class '{1}' created in Centrify Vault" -f $ResourceName, $ComputerClass)
             }
             else {
                 # Server must exists for Update and Delete actions
-                Write-Log(1, ("Target Server '{0}' cannot be found." -f $ResourceName))
+                Write-Log 1 ("Target Server '{0}' cannot be found" -f $ResourceName)
             }
         }
         # Validate Account exists
@@ -143,12 +152,14 @@ switch -Exact ($ResourceType) {
         if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
             if ($Action -eq "create") {
+                Write-Log 2 ("Target Account '{0}' cannot be found in Server '{1}'" -f $AccountName, $ResourceName)
                 # Create Account in Centrify Vault
                 $VaultedAccount = Add-VaultAccount -VaultSystem $VaultedServer -User $AccountName -Password $Password -IsManaged $False
+                Write-Log 3 ("Target Account '{0}' added to Server '{1}' in Centrify Vault" -f $AccountName, $ResourceName)
             }
             else {
                 # Account must exists for Update and Delete actions
-                Write-Log(1, ("Target Account '{0}' cannot be found in Server '{1}'." -f $AccountName, $ResourceName))
+                Write-Log 1 ("Target Account '{0}' cannot be found in Server '{1}'" -f $AccountName, $ResourceName)
             }
         }
     }
@@ -158,19 +169,21 @@ switch -Exact ($ResourceType) {
         $VaultedDomain = Get-VaultDomain -Name $ResourceName
         if ($VaultedDomain -eq [void]$null) {
             # Domain must exists for Create, Update and Delete actions
-            Write-Log(1, ("Target Domain '{0}' cannot be found." -f $ResourceName))
+            Write-Log 1 ("Target Domain '{0}' cannot be found" -f $ResourceName)
         }
         # Validate Account exists
         $VaultedAccount = Get-VaultAccount -VaultDomain $VaultedDomain -User $AccountName
         if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
             if ($Action -eq "create") {
+                Write-Log 2 ("Target Account '{0}' cannot be found in Domain '{1}'" -f $AccountName, $ResourceName)
                 # Create Account in Centrify Vault
                 $VaultedAccount = Add-VaultAccount -VaultDomain $VaultedDomain -User $AccountName -Password $Password -IsManaged $False
+                Write-Log 3 ("Target Account '{0}' added to Domain '{1}' in Centrify Vault" -f $AccountName, $ResourceName)
             }
             else {
                 # Account must exists for Update and Delete actions
-                Write-Log(1, ("Target Account '{0}' cannot be found in Domain '{1}'." -f $AccountName, $ResourceName))
+                Write-Log 1 ("Target Account '{0}' cannot be found in Domain '{1}'" -f $AccountName, $ResourceName)
             }
         }
     }
@@ -180,19 +193,21 @@ switch -Exact ($ResourceType) {
         $VaultedDatabase = Get-VaultDatabase -Name $ResourceName
         if ($VaultedDatabase -eq [void]$null) {
             # Database must exists for Create, Update and Delete actions
-            Write-Log(1, ("Target Database '{0}' cannot be found." -f $ResourceName))
+            Write-Log 1 ("Target Database '{0}' cannot be found" -f $ResourceName)
         }
         # Validate Account exists
         $VaultedAccount = Get-VaultAccount -VaultDatabase $VaultedDatabase -User $AccountName
         if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
             if ($Action -eq "create") {
+                Write-Log 2 ("Target Account '{0}' cannot be found in Database '{1}'" -f $AccountName, $ResourceName)
                 # Create Account in Centrify Vault
                 $VaultedAccount = Add-VaultAccount -VaultDatabase $VaultedDatabase -User $AccountName -Password $Password -IsManaged $False
+                Write-Log 3 ("Target Account '{0}' added to Database '{1}' in Centrify Vault" -f $AccountName, $ResourceName)
             }
             else {
                 # Account must exists for Update and Delete actions
-                Write-Log(1, ("Target Account '{0}' cannot be found in Database '{1}'." -f $AccountName, $ResourceName))
+                Write-Log 1 ("Target Account '{0}' cannot be found in Database '{1}'" -f $AccountName, $ResourceName)
             }
         }
     }
@@ -202,17 +217,17 @@ switch -Exact ($ResourceType) {
         # Validate CloudProvider exists
         $VaultedCloudProvider = Get-VaultCloudProvider -Name $ResourceName
         if ($VaultedCloudProvider -eq [void]$null) {
-            Write-Log(1, ("Target Cloud Provider '{0}' cannot be found." -f $ResourceName))
+            Write-Log 1 ("Target Cloud Provider '{0}' cannot be found" -f $ResourceName)
         }
         # Validate Account exists
         $VaultedAccount = Get-VaultAccount -VaultCloudProvider $VaultedCloudProvider -Name $AccountName
         if ($VaultedAccount -eq [void]$null) {
-            Write-Log(1, ("Target Account '{0}' cannot be found in Cloud Provider '{1}'." -f $AccountName, $ResourceName))
+            Write-Log 1 ("Target Account '{0}' cannot be found in Cloud Provider '{1}'" -f $AccountName, $ResourceName)
         }
     } #>
     
     default {
-        Write-Log(1, ("Target Type '{0}' is not supported." -f $ResourceType))
+        Write-Log 1 ("Target Type '{0}' is not supported" -f $ResourceType)
     }
 }
 
@@ -220,14 +235,16 @@ switch -Exact ($ResourceType) {
 if ($Action -eq "update") {
     # Update Account password
     Set-VaultPassword -VaultAccount $VaultedAccount -Password $Password
+    Write-Log 3 ("'{0}' Account password updated on resource '{1}'" -f $VaultedAccount.User, $VaultedAccount.Name)
 }
 elseif ($Action -eq "delete") {
     # Delete Account from Centrify Vault
     $VaultedAccount | Remove-VaultAccount
+    Write-Log 3 ("'{0}' Account deleted from resource '{1}'" -f $VaultedAccount.User, $VaultedAccount.Name)
 }
 else {
     # Throw error for any action other than create
     if ($Action -ne "create") {
-        Write-Log(1, ("Action '{0}' is not supported." -f $Action))
+        Write-Log 1 ("Action '{0}' is not supported" -f $Action)
     }
 }
