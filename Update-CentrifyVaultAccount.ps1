@@ -58,6 +58,7 @@ Specifies the system resource Computer Class when Action is to create a new syst
 [string]$APIClient = "secretserver"
 [string]$APIScope = "sync"
 [string]$APISecret = "c3ZjX3NlY3JldHNlcnZlckBhYXNnYWFyZC5kZXY6Q2VudHIxZnk="
+[string]$APIUser = ([encoding]::ASCII.GetString([convert]::FromBase64String($APISecret))).Split(':')[0]
 
 # Log file and level
 [string]$LogFile = "C:\Users\fabrice\Documents\GitHub\centrify-thycotic-vaultsync\centrify_vaultsync.log"
@@ -161,6 +162,8 @@ switch -Exact ($ResourceType) {
                 # Create Account in Centrify Vault
                 $VaultedAccount = Add-VaultAccount -VaultSystem $VaultedServer -User $AccountName -Password $Password -IsManaged $False
                 Write-Log 3 ("Target Account '{0}' added to Server '{1}' in Centrify Vault" -f $AccountName, $ResourceName)
+                # Stripping Owner permissions from Service User after account creation
+                Set-VaultPermission -VaultAccount $VaultedAccount -Principal $APIUser -Right "None"
             }
             else {
                 # Account must exists for Update and Delete actions
