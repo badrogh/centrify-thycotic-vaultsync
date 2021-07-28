@@ -135,6 +135,7 @@ else {
 switch -Exact ($ResourceType) {
     "server" {
         # Validate Server exists
+        Write-Log 0 ("Looking for Target resource '{0}' in tenant '{1}'" -f $ResourceName, $Url)
         $VaultedServer = Get-VaultSystem -Name $ResourceName
         if ($VaultedServer -eq [void]$null) {
             # Evaluate Action to perform
@@ -151,6 +152,7 @@ switch -Exact ($ResourceType) {
             }
         }
         # Validate Account exists
+        Write-Log 0 ("Looking for Account '{0}' on resource '{1}'" -f $AccountName, $ResourceName)
         $VaultedAccount = Get-VaultAccount -VaultSystem $VaultedServer -User $AccountName
         if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
@@ -170,6 +172,7 @@ switch -Exact ($ResourceType) {
 
     "domain" {
         # Validate Domain exists
+        Write-Log 0 ("Looking for Target resource '{0}' in tenant '{1}'" -f $ResourceName, $Url)
         $VaultedDomain = Get-VaultDomain -Name $ResourceName
         if ($VaultedDomain -eq [void]$null) {
             # Domain must exists for Create, Update and Delete actions
@@ -177,6 +180,7 @@ switch -Exact ($ResourceType) {
             exit 1
         }
         # Validate Account exists
+        Write-Log 0 ("Looking for Account '{0}' on resource '{1}'" -f $AccountName, $ResourceName)
         $VaultedAccount = Get-VaultAccount -VaultDomain $VaultedDomain -User $AccountName
         if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
@@ -195,6 +199,7 @@ switch -Exact ($ResourceType) {
 
     "database" {
         # Validate Database exists
+        Write-Log 0 ("Looking for Target resource '{0}' in tenant '{1}'" -f $ResourceName, $Url)
         $VaultedDatabase = Get-VaultDatabase -Name $ResourceName
         if ($VaultedDatabase -eq [void]$null) {
             # Database must exists for Create, Update and Delete actions
@@ -202,6 +207,7 @@ switch -Exact ($ResourceType) {
             exit 1
         }
         # Validate Account exists
+        Write-Log 0 ("Looking for Account '{0}' on resource '{1}'" -f $AccountName, $ResourceName)
         $VaultedAccount = Get-VaultAccount -VaultDatabase $VaultedDatabase -User $AccountName
         if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
@@ -242,11 +248,13 @@ switch -Exact ($ResourceType) {
 # Perform action on Account
 if ($Action -eq "update") {
     # Update Account password
+    Write-Log 0 ("Updating password for Account '{0}' on resource '{1}'" -f $AccountName, $ResourceName)
     Set-VaultPassword -VaultAccount $VaultedAccount -Password $Password
     Write-Log 3 ("'{0}' Account password updated on resource '{1}'" -f $VaultedAccount.User, $VaultedAccount.Name)
 }
 elseif ($Action -eq "delete") {
     # Delete Account from Centrify Vault
+    Write-Log 0 ("Deleting Account '{0}' from resource '{1}'" -f $AccountName, $ResourceName)
     $VaultedAccount | Remove-VaultAccount
     Write-Log 3 ("'{0}' Account deleted from resource '{1}'" -f $VaultedAccount.User, $VaultedAccount.Name)
 }
