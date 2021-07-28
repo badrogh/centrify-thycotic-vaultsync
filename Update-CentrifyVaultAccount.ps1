@@ -145,6 +145,8 @@ switch -Exact ($ResourceType) {
                 # Create Server in Centrify Vault
                 $VaultedServer = New-VaultSystem -Name $ResourceName -Fqdn $ResourceName -ComputerClass $ComputerClass
                 Write-Log 3 ("Target Server '{0}' with computer class '{1}' created in Centrify Vault" -f $ResourceName, $ComputerClass)
+                # Stripping Owner permissions from Service User after server creation
+                Set-VaultPermission -VaultSystem $VaultedServer -Principal $APIUser -Right "None"
             }
             else {
                 # Server must exists for Update and Delete actions
