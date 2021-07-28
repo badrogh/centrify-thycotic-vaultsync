@@ -58,7 +58,7 @@ Specifies the system resource Computer Class when Action is to create a new syst
 [string]$APIClient = "secretserver"
 [string]$APIScope = "sync"
 [string]$APISecret = "c3ZjX3NlY3JldHNlcnZlckBhYXNnYWFyZC5kZXY6Q2VudHIxZnk="
-[string]$APIUser = ([encoding]::ASCII.GetString([convert]::FromBase64String($APISecret))).Split(':')[0]
+[string]$APIUser = ([text.encoding]::ASCII.GetString([convert]::FromBase64String($APISecret))).Split(':')[0]
 
 # Log file and level
 [string]$LogFile = "C:\Users\fabrice\Documents\GitHub\centrify-thycotic-vaultsync\centrify_vaultsync.log"
