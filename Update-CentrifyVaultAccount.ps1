@@ -64,12 +64,12 @@ Specifies the system resource Computer Class when Action is to create a new syst
 [int32]$LogLevel = 0
 
 # Script arguments
-[string]$Action = $Args[0]
-[string]$ResourceType = $Args[1]
-[string]$ResourceName = $Args[2]
-[string]$AccountName = $Args[3]
-[string]$Password = $Args[4]
-[string]$ComputerClass = $Args[5]
+[string]$Action = $Args[0].Trim('"')
+[string]$ResourceType = $Args[1].Trim('"')
+[string]$ResourceName = $Args[2].Trim('"')
+[string]$AccountName = $Args[3].Trim('"')
+[string]$Password = $Args[4].Trim('"')
+[string]$ComputerClass = $Args[5].Trim('"')
 
 ##########################
 ###    LOG FACILITY    ###
