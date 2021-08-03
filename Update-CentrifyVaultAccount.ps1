@@ -54,7 +54,7 @@ Specifies the system resource Computer Class when Action is to create a new syst
 ##########################
 
 # Centrify Tenant URL and OAuth settings
-[string]$Url = "dkettmann.my.centrify.net"
+[string]$Url = "**MASKED**.my.centrify.net"
 [string]$APIClient = "CentrifyCLI"
 [string]$APIScope = "ccli"
 [string]$APISecret = "**MASKED**"
