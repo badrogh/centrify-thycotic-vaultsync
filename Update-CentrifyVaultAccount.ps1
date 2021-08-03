@@ -69,8 +69,14 @@ Specifies the system resource Computer Class when Action is to create a new syst
 [string]$ResourceType = $Args[1].Trim('"')
 [string]$ResourceName = $Args[2].Trim('"')
 [string]$AccountName = $Args[3].Trim('"')
-[string]$Password = $Args[4].Trim('"')
-[string]$ComputerClass = $Args[5].Trim('"')
+if ($Arg.Count -ge 4)
+{
+    [string]$Password = $Args[4].Trim('"')
+}
+if ($Arg.Count -ge 5)
+{
+    [string]$ComputerClass = $Args[5].Trim('"')
+}
 
 ##########################
 ###    LOG FACILITY    ###
@@ -136,7 +142,7 @@ else {
 switch -Exact ($ResourceType) {
     "server" {
         # Validate Server exists
-        Write-Log 0 ("Looking for Target resource '{0}' in tenant '{1}'" -f $ResourceName, $Url)
+        Write-Log 0 ("Looking for Server '{0}' in tenant '{1}'" -f $ResourceName, $Url)
         $VaultedServer = Get-VaultSystem -Name $ResourceName
         if ($VaultedServer -eq [void]$null) {
             # Evaluate Action to perform
@@ -146,7 +152,7 @@ switch -Exact ($ResourceType) {
                 $VaultedServer = New-VaultSystem -Name $ResourceName -Fqdn $ResourceName -ComputerClass $ComputerClass
                 Write-Log 3 ("Target Server '{0}' with computer class '{1}' created in Centrify Vault" -f $ResourceName, $ComputerClass)
                 # Stripping Owner permissions from Service User after server creation
-                Set-VaultPermission -VaultSystem $VaultedServer -Principal $APIUser -Right "None"
+                # WIP - Set-VaultPermission -VaultSystem $VaultedServer -Principal $APIUser -Right "None"
             }
             else {
                 # Server must exists for Update and Delete actions
@@ -155,7 +161,7 @@ switch -Exact ($ResourceType) {
             }
         }
         # Validate Account exists
-        Write-Log 0 ("Looking for Account '{0}' on resource '{1}'" -f $AccountName, $ResourceName)
+        Write-Log 0 ("Looking for Account '{0}' on Server '{1}'" -f $AccountName, $ResourceName)
         $VaultedAccount = Get-VaultAccount -VaultSystem $VaultedServer -User $AccountName
         if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
@@ -165,7 +171,7 @@ switch -Exact ($ResourceType) {
                 $VaultedAccount = Add-VaultAccount -VaultSystem $VaultedServer -User $AccountName -Password $Password -IsManaged $False
                 Write-Log 3 ("Target Account '{0}' added to Server '{1}' in Centrify Vault" -f $AccountName, $ResourceName)
                 # Stripping Owner permissions from Service User after account creation
-                Set-VaultPermission -VaultAccount $VaultedAccount -Principal $APIUser -Right "None"
+                # WIP - Set-VaultPermission -VaultAccount $VaultedAccount -Principal $APIUser -Right "None"
             }
             else {
                 # Account must exists for Update and Delete actions
@@ -177,7 +183,7 @@ switch -Exact ($ResourceType) {
 
     "domain" {
         # Validate Domain exists
-        Write-Log 0 ("Looking for Target resource '{0}' in tenant '{1}'" -f $ResourceName, $Url)
+        Write-Log 0 ("Looking for Domain '{0}' in tenant '{1}'" -f $ResourceName, $Url)
         $VaultedDomain = Get-VaultDomain -Name $ResourceName
         if ($VaultedDomain -eq [void]$null) {
             # Domain must exists for Create, Update and Delete actions
@@ -185,7 +191,7 @@ switch -Exact ($ResourceType) {
             exit 1
         }
         # Validate Account exists
-        Write-Log 0 ("Looking for Account '{0}' on resource '{1}'" -f $AccountName, $ResourceName)
+        Write-Log 0 ("Looking for Account '{0}' in Domain '{1}'" -f $AccountName, $ResourceName)
         $VaultedAccount = Get-VaultAccount -VaultDomain $VaultedDomain -User $AccountName
         if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
@@ -204,7 +210,7 @@ switch -Exact ($ResourceType) {
 
     "database" {
         # Validate Database exists
-        Write-Log 0 ("Looking for Target resource '{0}' in tenant '{1}'" -f $ResourceName, $Url)
+        Write-Log 0 ("Looking for Database '{0}' in tenant '{1}'" -f $ResourceName, $Url)
         $VaultedDatabase = Get-VaultDatabase -Name $ResourceName
         if ($VaultedDatabase -eq [void]$null) {
             # Database must exists for Create, Update and Delete actions
@@ -212,7 +218,7 @@ switch -Exact ($ResourceType) {
             exit 1
         }
         # Validate Account exists
-        Write-Log 0 ("Looking for Account '{0}' on resource '{1}'" -f $AccountName, $ResourceName)
+        Write-Log 0 ("Looking for Account '{0}' on Database '{1}'" -f $AccountName, $ResourceName)
         $VaultedAccount = Get-VaultAccount -VaultDatabase $VaultedDatabase -User $AccountName
         if ($VaultedAccount -eq [void]$null) {
             # Evaluate Action to perform
@@ -253,13 +259,13 @@ switch -Exact ($ResourceType) {
 # Perform action on Account
 if ($Action -eq "update") {
     # Update Account password
-    Write-Log 0 ("Updating password for Account '{0}' on resource '{1}'" -f $AccountName, $ResourceName)
+    Write-Log 0 ("Updating password for Account '{0}' on resource '{1}'" -f $VaultedAccount.User, $VaultedAccount.Name)
     Set-VaultPassword -VaultAccount $VaultedAccount -Password $Password
     Write-Log 3 ("'{0}' Account password updated on resource '{1}'" -f $VaultedAccount.User, $VaultedAccount.Name)
 }
 elseif ($Action -eq "delete") {
     # Delete Account from Centrify Vault
-    Write-Log 0 ("Deleting Account '{0}' from resource '{1}'" -f $AccountName, $ResourceName)
+    Write-Log 0 ("Deleting Account '{0}' from resource '{1}'" -f $VaultedAccount.User, $VaultedAccount.Name)
     $VaultedAccount | Remove-VaultAccount
     Write-Log 3 ("'{0}' Account deleted from resource '{1}'" -f $VaultedAccount.User, $VaultedAccount.Name)
 }
