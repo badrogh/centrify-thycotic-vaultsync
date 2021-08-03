@@ -54,14 +54,14 @@ Specifies the system resource Computer Class when Action is to create a new syst
 ##########################
 
 # Centrify Tenant URL and OAuth settings
-[string]$Url = "aasgaard.my.centrify-dev.net"
-[string]$APIClient = "secretserver"
-[string]$APIScope = "sync"
-[string]$APISecret = "c3ZjX3NlY3JldHNlcnZlckBhYXNnYWFyZC5kZXY6Q2VudHIxZnk="
+[string]$Url = "dkettmann.my.centrify.net"
+[string]$APIClient = "CentrifyCLI"
+[string]$APIScope = "ccli"
+[string]$APISecret = "**MASKED**"
 [string]$APIUser = ([text.encoding]::ASCII.GetString([convert]::FromBase64String($APISecret))).Split(':')[0]
 
 # Log file and level
-[string]$LogFile = "C:\Users\fabrice\Documents\GitHub\centrify-thycotic-vaultsync\centrify_vaultsync.log"
+[string]$LogFile = "C:\Temp\centrify_vaultsync.log"
 [int32]$LogLevel = 0
 
 # Script arguments
@@ -69,14 +69,16 @@ Specifies the system resource Computer Class when Action is to create a new syst
 [string]$ResourceType = $Args[1].Trim('"')
 [string]$ResourceName = $Args[2].Trim('"')
 [string]$AccountName = $Args[3].Trim('"')
-if ($Arg.Count -ge 4)
+if ($Args.Count -ge 5)
 {
     [string]$Password = $Args[4].Trim('"')
 }
-if ($Arg.Count -ge 5)
+if ($Args.Count -ge 6)
 {
     [string]$ComputerClass = $Args[5].Trim('"')
 }
+
+
 
 ##########################
 ###    LOG FACILITY    ###
@@ -92,13 +94,15 @@ function Write-Log([int32]$Level, [string]$Message)
         {
             "0" { [string]$MessageLevel = "DEBUG" }
             "1" { [string]$MessageLevel = "ERROR" }
-            "2" { [string]$MessageLevel = "WARN" }
-            "3" { [string]$MessageLevel = "INFO" }
+            "2" { [string]$MessageLevel = "WARN " }
+            "3" { [string]$MessageLevel = "INFO " }
         }
         # Write Log
         ("{0}|{1}|{2}" -f $Timestamp, $MessageLevel, $Message) | Out-File -FilePath $LogFile -Append -NoClobber -Force
     }
 }
+
+
 
 ##########################################
 ###     CENTRIFY POWERSHELL MODULE     ###
@@ -123,6 +127,9 @@ if (@(Get-Module | Where-Object {$_.Name -eq $ModuleName}).count -eq 0) {
 ###     MAIN LOGIC     ###
 ##########################
 
+Write-Log 1 ("================ Session Start ================")
+Write-Log 1 ("Arguments {0}: $Args" -f $Args.Count)
+
 if ($PlatformConnection -eq [void]$null) {
     # Connect to Centrify Platform
     Connect-CentrifyPlatform -Url $Url -Client $APIClient -Scope $APIScope -Secret $APISecret
@@ -138,6 +145,8 @@ else {
     Write-Log 0 ("Connected to Centrify tenant '{0}'" -f $PlatformConnection.PodFqdn)
 }
 
+
+
 # Evaluate target type to perform action against
 switch -Exact ($ResourceType) {
     "server" {
@@ -149,7 +158,14 @@ switch -Exact ($ResourceType) {
             if ($Action -eq "create") {
                 Write-Log 2 ("Target Server '{0}' cannot be found" -f $ResourceName)
                 # Create Server in Centrify Vault
-                $VaultedServer = New-VaultSystem -Name $ResourceName -Fqdn $ResourceName -ComputerClass $ComputerClass
+                try {
+                    $VaultedServer = New-VaultSystem -Name $ResourceName -Fqdn $ResourceName -ComputerClass $ComputerClass
+                } catch {
+                    Write-Log 1 ("Unable to create system '{0}'" -f $ResourceName)
+                    Write-Log 1 ("ResourceName: {0} -- ComputerClass: {1}" -f $ResourceName, $ComputerClass)
+                    Write-Error "Unable to create system '$ResourceName'"
+                    exit 1
+                }
                 Write-Log 3 ("Target Server '{0}' with computer class '{1}' created in Centrify Vault" -f $ResourceName, $ComputerClass)
                 # Stripping Owner permissions from Service User after server creation
                 # WIP - Set-VaultPermission -VaultSystem $VaultedServer -Principal $APIUser -Right "None"
@@ -276,3 +292,6 @@ else {
         exit 1
     }
 }
+
+
+Write-Log 1 ("================ Session End ================")
