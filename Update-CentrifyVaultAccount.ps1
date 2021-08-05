@@ -69,11 +69,11 @@ Specifies the system resource Computer Class when Action is to create a new syst
 [string]$ResourceType = $Args[1].Trim('"')
 [string]$ResourceName = $Args[2].Trim('"')
 [string]$AccountName = $Args[3].Trim('"')
-if ($Args.Count -ge 5)
+if ($Args.Count -gt 4)
 {
     [string]$Password = $Args[4].Trim('"')
 }
-if ($Args.Count -ge 6)
+if ($Args.Count -gt 5)
 {
     [string]$ComputerClass = $Args[5].Trim('"')
 }
@@ -127,8 +127,14 @@ if (@(Get-Module | Where-Object {$_.Name -eq $ModuleName}).count -eq 0) {
 ###     MAIN LOGIC     ###
 ##########################
 
-Write-Log 1 ("================ Session Start ================")
-Write-Log 1 ("Arguments {0}: $Args" -f $Args.Count)
+Write-Log 0 ("================ Session Start ================")
+# Obfuscating password from log file when debug option output the arguments
+$Arguments = $Args
+if ($Arguments.Count -gt 4)
+{
+    $Arguments[4] = "*****"
+}
+Write-Log 0 ("Arguments ({0}): {1}" -f $Arguments.Count, $Arguments)
 
 if ($PlatformConnection -eq [void]$null) {
     # Connect to Centrify Platform
@@ -293,5 +299,4 @@ else {
     }
 }
 
-
-Write-Log 1 ("================ Session End ================")
+Write-Log 0 ("================ Session End ================")
